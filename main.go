@@ -8,16 +8,7 @@ import (
 	"time"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"strconv"
-	"sort"
 )
-
-type PlayerSummary struct {
-	Name string
-	Kills int
-	Deaths int
-}
-
-type PlayerList []PlayerSummary
 
 var (
 	LogStartRegexp *regexp.Regexp
@@ -179,18 +170,13 @@ func GenerateLogForDay(day time.Time) {
 		"H2",
 		"Списки лидеров",
 	)
-	r := 4
-	kills := make(map[string]int)
-	deaths := make(map[string]int)
 
+	r := 4
 	for rows.Next() {
 		var killed, killer, weapon, bodyPart string
 		var createdAt time.Time
 
 		rows.Scan(&killed, &killer, &weapon, &bodyPart, &createdAt)
-
-		kills[killer]++
-		deaths[killed]++
 
 		i := strconv.Itoa(r)
 		xlsx.SetCellStr("Sheet1", "A"+i, createdAt.Format("15:04:05"))
@@ -208,30 +194,34 @@ func GenerateLogForDay(day time.Time) {
 		r++
 	}
 
-	// Make player summary list
-	pl := make(PlayerList, len(kills))
-	i := 0
-	for k, v := range kills {
-		pl[i] = PlayerSummary{Name:k, Kills:v, Deaths:deaths[k]}
-		i++
+	rows, err = GetLeadersList(day)
+
+	if err != nil {
+		panic(err)
 	}
-	sort.Sort(pl)
 
 	r = 4
-	for n, v := range pl {
+	n := 1
+	for rows.Next() {
 		i := strconv.Itoa(r)
 
-		xlsx.SetCellInt("Sheet1", "H"+i, n+1)
-		xlsx.SetCellStr("Sheet1", "I"+i, v.Name)
-		xlsx.SetCellInt("Sheet1", "J"+i, v.Kills)
-		xlsx.SetCellInt("Sheet1", "K"+i, v.Deaths)
+		var name string
+		var kills, deaths int
+		rows.Scan(&name, &kills, &deaths)
+
+		xlsx.SetCellInt("Sheet1", "H"+i, n)
+		xlsx.SetCellStr("Sheet1", "I"+i, name)
+		xlsx.SetCellInt("Sheet1", "J"+i, kills)
+		xlsx.SetCellInt("Sheet1", "K"+i, deaths)
 
 		if r % 2 != 0 {
 			xlsx.SetCellStyle("Sheet1", "H"+i, "K"+i, cellStyleEven)
 		} else {
 			xlsx.SetCellStyle("Sheet1", "H"+i, "K"+i, cellStyle)
 		}
+
 		r++
+		n++
 	}
 
 	xlsx.SetSheetName("Sheet1", "Статистика")
@@ -240,9 +230,3 @@ func GenerateLogForDay(day time.Time) {
 		panic(err)
 	}
 }
-
-func (p PlayerList) Len() int { return len(p) }
-func (p PlayerList) Less(i, j int) bool {
-	if p[i].Kills == p[j].Kills {return p[i].Deaths < p[j].Deaths} else {return p[i].Kills > p[j].Kills}
-}
-func (p PlayerList) Swap(i, j int){ p[i], p[j] = p[j], p[i] }
