@@ -1,13 +1,17 @@
 package main
 
 import (
-	"regexp"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/jinzhu/configor"
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"github.com/360EntSecGroup-Skylar/excelize"
+	"regexp"
 	"fmt"
 	"time"
-	"github.com/360EntSecGroup-Skylar/excelize"
 	"strconv"
+	"log"
+	"os"
 )
 
 var (
@@ -19,38 +23,98 @@ var (
 	db *gorm.DB
 )
 
+var Config = struct {
+	LogFile string `default:"server.log"`
+
+	DB struct {
+		Host 	 string `default:"localhost"`
+		Name     string `default:"dayzone"`
+		User     string `default:"postgres"`
+		Password string `default:"postgres"`
+		Port     uint   `default:"5432"`
+		SSLMode	 string	`default:"disable"`
+	}
+
+	Servers []struct {
+		FullName  string
+		ShortName string
+	}
+}{}
+
 func main() {
+	fmt.Println(os.Args)
+	if len(os.Args) != 3 {
+		fmt.Println("Invalid number of arguments - 2 expected")
+		return
+	}
+
+	err := configor.Load(&Config, "config.yml")
+	if err != nil {
+		panic(err)
+	}
+
+	log.SetOutput(&lumberjack.Logger{
+		Filename:   Config.LogFile,
+		MaxSize:    20, // megabytes
+		MaxBackups: 10,
+		MaxAge:     7, // days
+		Compress:   true,
+	})
+
+	log.Println("------------------------------------------------------")
+	log.Println("Log started.")
+	log.Println("------------------------------------------------------")
+
+	log.Println("Initializing...")
 	fmt.Print("\nDayZ Warlog Server \nVersion 1.0\n---------------------------\n\n")
 
+	log.Println("Compiling regular expressions...")
 	LogStartRegexp = regexp.MustCompile(`\x00AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
 	KilledRegexp = regexp.MustCompile(`(?P<_0>.+) \| Player \"(?P<_1>.+)\"\(id=(?P<_2>.+)\) has been killed by player \"(?P<_3>.+)\"\(id=(?P<_4>.+)\)`)
 	HitRegexp = regexp.MustCompile(`(?P<_0>.+) \| \"(?P<_1>.+)\(uid=(?P<_2>.+)\) HIT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\.\"`)
 	ShotRegexp = regexp.MustCompile(`(?P<_0>.+) \| \"(?P<_1>.+)\(uid=(?P<_2>.+)\) SHOT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\.\"`)
 
-	fmt.Println("Connection to database...")
-
-	var err error
+	log.Println("Connection to database...")
 	db, err = gorm.Open(
 		"postgres",
-		"host=localhost port=5432 user=postgres dbname=dayzone password=postgres sslmode=disable",
+		fmt.Sprintf(
+			"host=%s port=%d user=%s dbname=%s password=%s sslmode=%s",
+			Config.DB.Host,
+			Config.DB.Port,
+			Config.DB.User,
+			Config.DB.Name,
+			Config.DB.Password,
+			Config.DB.SSLMode,
+		),
 	)
 
 	if err != nil {
-		fmt.Println(err)
-		panic("failed to connect database")
+		log.Panicln(err)
 	}
 
 	defer db.Close()
 
 	//db.LogMode(true)
 
-	fmt.Println("Applying migrations...")
+	log.Println("Applying migrations...")
 	db.AutoMigrate(&Player{},  &Weapon{}, &BodyPart{}, &ServerEvent{}, &KillEvent{}, &DamageEvent{})
 
-	fmt.Println("Ready to parse!")
-	ParseLogFile("dayz/DayZServer_x64.ADM")
+	log.Println("Ready for work!")
+	fmt.Println("Ready for work!")
 
-	GenerateLogForDay(time.Date(2018, 4, 7, 0, 0, 0, 0, time.UTC))
+	if os.Args[1] == "--parse" {
+		ParseLogFile(os.Args[2])
+	} else if os.Args[1] == "--report" {
+		//GenerateLogForDay(time.Date(2018, 4, 7, 0, 0, 0, 0, time.UTC))
+		time, err := time.Parse("02.01.2006", os.Args[2])
+		if err != nil {
+			panic(err)
+		}
+		GenerateLogForDay(time)
+	} else {
+		fmt.Println("Invalid command. Expected \"--parse\" or \"--report\"")
+		return
+	}
 }
 
 func GenerateLogForDay(day time.Time) {
@@ -159,7 +223,7 @@ func GenerateLogForDay(day time.Time) {
 		"Sheet1",
 		"A2",
 		fmt.Sprintf(
-			"Статистика сервера \"DAYZONE #1 (Hardcore)\" за %s. Сгенерировано %s.",
+			"Статистика сервера за %s. Сгенерировано %s.",
 			day.Format("02.01.2006"),
 			time.Now().Format("02.01.2006 15:04:05"),
 		),
@@ -225,8 +289,11 @@ func GenerateLogForDay(day time.Time) {
 	}
 
 	xlsx.SetSheetName("Sheet1", "Статистика")
-	err = xlsx.SaveAs("dayz/"+day.Format("02.01.2006")+".xlsx")
+	fileName := day.Format("02.01.2006")+".xlsx"
+	err = xlsx.SaveAs(fileName)
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Printf("Report saved to \"%s\"!\n", fileName)
 }

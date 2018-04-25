@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-func ParseLogFile(fn string) string {
+func ParseLogFile(fn string) bool {
 	f, _ := os.Open(fn)
 	defer f.Close()
 
@@ -34,9 +34,10 @@ func ParseLogFile(fn string) string {
 
 	if err := s.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "reading standard input:", err)
+		return false
 	}
 
-	return ""
+	return true
 }
 
 func ParseLogPart(s *bufio.Scanner, t time.Time) {
@@ -57,14 +58,16 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 		if matches != nil {
 			id, err := strconv.ParseInt(matches[0][5], 10, 64)
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				continue
 			}
 
 			killer := CreateOrUpdatePlayer(id, matches[0][4])
 
 			id, err = strconv.ParseInt(matches[0][3], 10, 64)
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				continue
 			}
 
 			killed := CreateOrUpdatePlayer(id, matches[0][2])
@@ -99,14 +102,16 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 		if matches != nil {
 			id, err := strconv.ParseInt(matches[0][3], 10, 64)
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				continue
 			}
 
 			dealer := CreateOrUpdatePlayer(id, matches[0][2])
 
 			id, err = strconv.ParseInt(matches[0][5], 10, 64)
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				continue
 			}
 
 			receiver := CreateOrUpdatePlayer(id, matches[0][4])
