@@ -127,11 +127,11 @@ func main() {
 
 	// Creating schemas for servers and dictionaries, applying migrations
 	db.Exec("CREATE SCHEMA IF NOT EXISTS public")
-	db.Exec("CREATE SCHEMA IF NOT EXISTS " + Config.Servers[CurrentServerIndex].Name)
+	db.Exec("CREATE SCHEMA IF NOT EXISTS " + Config.Servers[CurrentServerIndex].Schema)
 
 	db.AutoMigrate(&BodyPart{}, &Weapon{})
 
-	db.Exec("SET search_path TO " + Config.Servers[CurrentServerIndex].Name)
+	db.Exec("SET search_path TO " + Config.Servers[CurrentServerIndex].Schema)
 	db.AutoMigrate(&Player{}, &ServerEvent{}, &KillEvent{}, &DamageEvent{})
 
 	log.Println("Ready for work!")
