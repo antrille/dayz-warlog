@@ -96,7 +96,8 @@ func main() {
 	fmt.Print("\nDayZ Warlog Server \nVersion 1.0\n---------------------------\n\n")
 
 	log.Println("Compiling regular expressions...")
-	LogStartRegexp = regexp.MustCompile(`\x00AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
+	//LogStartRegexp = regexp.MustCompile(`\x00AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
+	LogStartRegexp = regexp.MustCompile(`AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
 	KilledRegexp = regexp.MustCompile(`(?P<_0>.+) \| Player "(?P<_1>.+)"\(id=(?P<_2>.+)\) has been killed by player "(?P<_3>.+)"\(id=(?P<_4>.+)\)`)
 	HitRegexp = regexp.MustCompile(`(?P<_0>.+) \| "(?P<_1>.+)\(uid=(?P<_2>.+)\) HIT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\."`)
 	ShotRegexp = regexp.MustCompile(`(?P<_0>.+) \| "(?P<_1>.+)\(uid=(?P<_2>.+)\) SHOT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\."`)
@@ -133,6 +134,8 @@ func main() {
 
 	db.Exec("SET search_path TO " + Config.Servers[CurrentServerIndex].Schema)
 	db.AutoMigrate(&Player{}, &ServerEvent{}, &KillEvent{}, &DamageEvent{})
+
+	db.Exec("SET timezone TO 'UTC'")
 
 	log.Println("Ready for work!")
 	fmt.Println("Ready for work!")

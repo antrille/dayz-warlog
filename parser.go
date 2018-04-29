@@ -10,7 +10,10 @@ import (
 )
 
 func ParseLogFile(fn string) bool {
-	f, _ := os.Open(fn)
+	f, err := os.Open(fn)
+	if err != nil {
+		panic(err)
+	}
 	defer f.Close()
 
 	s := bufio.NewScanner(f)
