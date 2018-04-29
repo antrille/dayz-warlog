@@ -1,13 +1,13 @@
 package main
 
 import (
-	"time"
-	"github.com/360EntSecGroup-Skylar/excelize"
 	"fmt"
+	"github.com/360EntSecGroup-Skylar/excelize"
 	"strconv"
+	"time"
 )
 
-func GenerateLogForDay(day time.Time) {
+func DumpDayReport(day time.Time) {
 	xlsx := excelize.NewFile()
 
 	rows, err := GetKillEventsList(day)
@@ -139,7 +139,7 @@ func GenerateLogForDay(day time.Time) {
 		"A2",
 		fmt.Sprintf(
 			"Статистика убийств на сервере \"%s\" за %s",
-			Config.Servers[ServerID].FullName,
+			Config.Servers[CurrentServerIndex].FullName,
 			day.Format("02.01.2006"),
 		),
 	)
@@ -207,7 +207,13 @@ func GenerateLogForDay(day time.Time) {
 
 	xlsx.SetActiveSheet(0)
 	xlsx.SetSheetName("Sheet1", "За день")
-	fileName := fmt.Sprintf("%s_%s.xlsx", Config.Servers[ServerID].Name, day.Format("02.01.2006"))
+
+	fileName := fmt.Sprintf(
+		"%s_%s.xlsx",
+		Config.Servers[CurrentServerIndex].Name,
+		day.Format("02.01.2006"),
+	)
+
 	err = xlsx.SaveAs(fileName)
 	if err != nil {
 		panic(err)

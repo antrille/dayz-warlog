@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"github.com/jinzhu/configor"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"log"
 	"os"
 	"regexp"
@@ -34,19 +34,19 @@ var Config = struct {
 	}
 
 	Servers []struct {
-		Name string
-		FullName  string
+		Schema	 string
+		Name     string `required:"true"`
+		FullName string `required:"true"`
 	} `required:"true"`
 }{}
 
-var ServerID = -1
+var CurrentServerIndex = -1
 
 func main() {
-	fmt.Println(os.Args)
-	if len(os.Args) < 2  {
+	if len(os.Args) < 2 {
 		fmt.Println("Usage:\n" +
-			"warlog_server.exe --parse {log_filename} {server_name}\n" +
-			"warlog_server.exe --report {DD.MM.YYYY} {server_name}")
+			os.Args[0]+" --parse <log_filename> <server_name>\n" +
+			os.Args[0]+" --report <DD.MM.YYYY> <server_name>")
 		return
 	}
 
@@ -66,16 +66,17 @@ func main() {
 		panic(err)
 	}
 
-	schema := os.Args[3]
+	serverName := os.Args[3]
 	for i, s := range Config.Servers {
-		if s.Name == schema {
-			ServerID = i
-			break
+		Config.Servers[i].Schema = "srv_" + s.Name
+
+		if CurrentServerIndex == -1 && s.Name == serverName {
+			CurrentServerIndex = i
 		}
 	}
 
-	if ServerID == -1 {
-		fmt.Printf("Server \"%s\" is not found. Check your config file.\n", schema)
+	if CurrentServerIndex == -1 {
+		fmt.Printf("Server \"%s\" is not found, check your config file.\n", serverName)
 		return
 	}
 
@@ -123,11 +124,14 @@ func main() {
 	log.Println("Applying migrations...")
 
 	//db.LogMode(true)
+
+	// Creating schemas for servers and dictionaries, applying migrations
 	db.Exec("CREATE SCHEMA IF NOT EXISTS public")
-	db.Exec("CREATE SCHEMA IF NOT EXISTS "+Config.Servers[ServerID].Name)
+	db.Exec("CREATE SCHEMA IF NOT EXISTS " + Config.Servers[CurrentServerIndex].Name)
+
 	db.AutoMigrate(&BodyPart{}, &Weapon{})
 
-	db.Exec("SET search_path TO "+Config.Servers[ServerID].Name)
+	db.Exec("SET search_path TO " + Config.Servers[CurrentServerIndex].Name)
 	db.AutoMigrate(&Player{}, &ServerEvent{}, &KillEvent{}, &DamageEvent{})
 
 	log.Println("Ready for work!")
@@ -142,7 +146,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		GenerateLogForDay(day)
+		DumpDayReport(day)
 		break
 	default:
 		break
