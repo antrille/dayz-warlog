@@ -1,8 +1,8 @@
 package main
 
 import (
-	"time"
 	"database/sql"
+	"time"
 )
 
 const (
@@ -24,9 +24,9 @@ const (
 			kill_events.killed_player_id = de.received_player_id 
 			AND kill_events.killer_player_id = de.dealt_player_id
 			AND kill_events.created_at = de.created_at
-		LEFT JOIN weapons w ON 
+		LEFT JOIN public.weapons w ON 
 			de.weapon_id = w.id
-		LEFT JOIN body_parts bp ON 
+		LEFT JOIN public.body_parts bp ON 
 			de.body_part_id = bp.id
 		WHERE 
 			kill_events.created_at = de.created_at 

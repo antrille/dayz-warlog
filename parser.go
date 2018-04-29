@@ -1,12 +1,12 @@
 package main
 
 import (
-	"os"
 	"bufio"
-	"time"
 	"fmt"
-	"strings"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 )
 
 func ParseLogFile(fn string) bool {

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"time"
-	"strings"
-	"io/ioutil"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/encoding/charmap"
 	"database/sql"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
+	"io/ioutil"
+	"strings"
+	"time"
 )
 
 type Player struct {
@@ -20,10 +20,18 @@ type Weapon struct {
 	NameRu sql.NullString
 }
 
+func (Weapon) TableName() string {
+	return "public.weapons"
+}
+
 type BodyPart struct {
 	Id     uint `gorm:"primary_key;unique;not null"`
 	Name   string
 	NameRu sql.NullString
+}
+
+func (BodyPart) TableName() string {
+	return "public.body_parts"
 }
 
 type ServerEvent struct {
@@ -48,9 +56,9 @@ type DamageEvent struct {
 	ReceivedPlayer   Player   `gorm:"foreignkey:ReceivedPlayerId"`
 	ReceivedPlayerId int64    `gorm:"type:bigint REFERENCES players(id) ON DELETE CASCADE"`
 	Weapon           Weapon   `gorm:"foreignkey:WeaponId"`
-	WeaponId         uint     `gorm:"REFERENCES weapons(id)"`
+	WeaponId         uint     `gorm:"type:serial REFERENCES public.weapons(id)"`
 	BodyPart         BodyPart `gorm:"foreignkey:BodyPartId"`
-	BodyPartId       uint     `gorm:"REFERENCES body_parts(id)"`
+	BodyPartId       uint     `gorm:"type:serial REFERENCES public.body_parts(id)"`
 	CreatedAt        time.Time
 }
 
