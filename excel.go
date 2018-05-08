@@ -5,6 +5,7 @@ import (
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"strconv"
 	"time"
+	"database/sql"
 )
 
 func DumpDayReport(day time.Time) {
@@ -154,17 +155,17 @@ func DumpDayReport(day time.Time) {
 
 	r := 4
 	for rows.Next() {
-		var killed, killer, weapon, bodyPart string
+		var killed, killer, weapon, bodyPart sql.NullString
 		var createdAt time.Time
 
 		rows.Scan(&killed, &killer, &weapon, &bodyPart, &createdAt)
 
 		i := strconv.Itoa(r)
 		xlsx.SetCellStr("Sheet1", "A"+i, createdAt.Format("15:04:05"))
-		xlsx.SetCellStr("Sheet1", "B"+i, killed)
-		xlsx.SetCellStr("Sheet1", "C"+i, killer)
-		xlsx.SetCellStr("Sheet1", "D"+i, weapon)
-		xlsx.SetCellStr("Sheet1", "E"+i, bodyPart)
+		xlsx.SetCellStr("Sheet1", "B"+i, killed.String)
+		xlsx.SetCellStr("Sheet1", "C"+i, killer.String)
+		xlsx.SetCellStr("Sheet1", "D"+i, weapon.String)
+		xlsx.SetCellStr("Sheet1", "E"+i, bodyPart.String)
 
 		if r%2 != 0 {
 			xlsx.SetCellStyle("Sheet1", "A"+i, "E"+i, cellStyleEven)
