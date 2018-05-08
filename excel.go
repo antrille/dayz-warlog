@@ -114,7 +114,7 @@ func DumpDayReport(day time.Time) {
 
 	xlsx.SetRowHeight("Sheet1", 2, 24.0)
 	xlsx.SetColWidth("Sheet1", "B", "E", 30)
-	xlsx.SetColWidth("Sheet1", "D", "D", 25)
+	xlsx.SetColWidth("Sheet1", "D", "D", 30)
 	xlsx.SetColWidth("Sheet1", "E", "E", 15)
 	xlsx.SetColWidth("Sheet1", "A", "A", 10)
 	xlsx.SetColWidth("Sheet1", "H", "H", 5)
