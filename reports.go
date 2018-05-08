@@ -8,43 +8,40 @@ import (
 const (
 	KillEventsQuery = `
 		SELECT
-			DISTINCT ON (kill_events.created_at, de.received_player_id, de.created_at)
+			DISTINCT ON (ke.created_at, ke.killed_player_id, ke.killer_player_id)
 			k1.name AS killed,
 			k2.name AS killer,
 			COALESCE(w.name_ru, w.name) AS weapon,
 			COALESCE(bp.name_ru, bp.name) AS body_part,
-			kill_events.created_at AS created_at
+			ke.created_at AS created_at
 		FROM
-			kill_events
+			kill_events ke
 		LEFT JOIN players k1 ON 
-			kill_events.killed_player_id = k1.id
+			ke.killed_player_id = k1.id
 		LEFT JOIN players k2 ON 
-			kill_events.killer_player_id = k2.id
+			ke.killer_player_id = k2.id
 		LEFT JOIN damage_events de ON 
-			kill_events.killed_player_id = de.received_player_id 
-			AND kill_events.killer_player_id = de.dealt_player_id
-			AND kill_events.created_at = de.created_at
+			ke.killed_player_id = de.received_player_id 
+			AND ke.killer_player_id = de.dealt_player_id
+			AND de.created_at BETWEEN ke.created_at - INTERVAL '3 seconds' AND ke.created_at
 		LEFT JOIN public.weapons w ON 
 			de.weapon_id = w.id
 		LEFT JOIN public.body_parts bp ON 
 			de.body_part_id = bp.id
 		WHERE 
-			kill_events.created_at = de.created_at 
-			AND kill_events.created_at::date = ?::date
+			ke.created_at::date = ?::date
 		GROUP BY 
 			k1.name, 
 			k2.name, 
 			weapon, 
 			body_part, 
-			kill_events.created_at,
-			de.received_player_id,
-			de.created_at,
-			de.id
+			ke.created_at,
+			ke.killed_player_id,
+			ke.killer_player_id
 		ORDER BY 		
-			kill_events.created_at ASC,
-			de.received_player_id DESC,
-			de.created_at DESC,
-			de.id DESC
+			ke.created_at ASC,
+			ke.killed_player_id DESC,
+			ke.killer_player_id DESC
 	`
 	LeaderListQuery = `
 		SELECT

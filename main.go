@@ -130,10 +130,13 @@ func main() {
 	db.Exec("CREATE SCHEMA IF NOT EXISTS public")
 	db.Exec("CREATE SCHEMA IF NOT EXISTS " + Config.Servers[CurrentServerIndex].Schema)
 
+	db.Exec("SET search_path TO public")
 	db.AutoMigrate(&BodyPart{}, &Weapon{})
 
 	db.Exec("SET search_path TO " + Config.Servers[CurrentServerIndex].Schema)
 	db.AutoMigrate(&Player{}, &ServerEvent{}, &KillEvent{}, &DamageEvent{})
+
+	db.Exec("SET search_path TO public, " + Config.Servers[CurrentServerIndex].Schema)
 
 	db.Exec("SET timezone TO 'UTC'")
 

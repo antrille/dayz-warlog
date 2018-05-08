@@ -20,18 +20,10 @@ type Weapon struct {
 	NameRu sql.NullString
 }
 
-func (Weapon) TableName() string {
-	return "public.weapons"
-}
-
 type BodyPart struct {
 	Id     uint `gorm:"primary_key;unique;not null"`
 	Name   string
 	NameRu sql.NullString
-}
-
-func (BodyPart) TableName() string {
-	return "public.body_parts"
 }
 
 type ServerEvent struct {
