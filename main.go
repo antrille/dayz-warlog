@@ -43,6 +43,11 @@ var Config = struct {
 var CurrentServerIndex = -1
 
 func main() {
+	err := os.MkdirAll("reports", 0644)
+	if err != nil {
+		panic(err)
+	}
+
 	if len(os.Args) < 2 {
 		fmt.Println("Usage:\n" +
 			os.Args[0]+" --parse <log_filename> <server_name>\n" +
@@ -61,7 +66,7 @@ func main() {
 		return
 	}
 
-	err := configor.Load(&Config, "config.yml")
+	err = configor.Load(&Config, "config.yml")
 	if err != nil {
 		panic(err)
 	}
@@ -92,17 +97,18 @@ func main() {
 	log.Println("Log started.")
 	log.Println("------------------------------------------------------")
 
-	log.Println("Initializing...")
-	fmt.Print("\nDayZ Warlog Server \nVersion 1.0\n---------------------------\n\n")
+	fmt.Print("\nDayZ Warlog Server \nVersion 1.1\n---------------------------\n\n")
 
-	log.Println("Compiling regular expressions...")
-	//LogStartRegexp = regexp.MustCompile(`\x00AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
+	log.Println("Initializing...")
+	fmt.Println("Initializing...")
+	fmt.Println("Compiling regular expressions...")
+
 	LogStartRegexp = regexp.MustCompile(`AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
 	KilledRegexp = regexp.MustCompile(`(?P<_0>.+) \| Player "(?P<_1>.+)"\(id=(?P<_2>.+)\) has been killed by player "(?P<_3>.+)"\(id=(?P<_4>.+)\)`)
 	HitRegexp = regexp.MustCompile(`(?P<_0>.+) \| "(?P<_1>.+)\(uid=(?P<_2>.+)\) HIT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\."`)
 	ShotRegexp = regexp.MustCompile(`(?P<_0>.+) \| "(?P<_1>.+)\(uid=(?P<_2>.+)\) SHOT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\."`)
 
-	log.Println("Connecting to database...")
+	fmt.Println("Connecting to database...")
 	db, err = gorm.Open(
 		"postgres",
 		fmt.Sprintf(
@@ -122,26 +128,27 @@ func main() {
 
 	defer db.Close()
 
-	log.Println("Applying migrations...")
+	fmt.Println("Applying migrations...")
 
 	//db.LogMode(true)
 
 	// Creating schemas for servers and dictionaries, applying migrations
+	schema := Config.Servers[CurrentServerIndex].Schema
+
 	db.Exec("CREATE SCHEMA IF NOT EXISTS public")
-	db.Exec("CREATE SCHEMA IF NOT EXISTS " + Config.Servers[CurrentServerIndex].Schema)
+	db.Exec("CREATE SCHEMA IF NOT EXISTS "+schema)
 
 	db.Exec("SET search_path TO public")
 	db.AutoMigrate(&BodyPart{}, &Weapon{})
 
-	db.Exec("SET search_path TO " + Config.Servers[CurrentServerIndex].Schema)
+	db.Exec("SET search_path TO "+schema)
 	db.AutoMigrate(&Player{}, &ServerEvent{}, &KillEvent{}, &DamageEvent{})
 
-	db.Exec("SET search_path TO public, " + Config.Servers[CurrentServerIndex].Schema)
-
 	db.Exec("SET timezone TO 'UTC'")
+	db.Exec("SET search_path TO "+schema+", public")
 
-	log.Println("Ready for work!")
-	fmt.Println("Ready for work!")
+	log.Println("Server is initialized!")
+	fmt.Println("Server is initialized!")
 
 	switch os.Args[1] {
 	case "--parse":
@@ -152,7 +159,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		DumpDayReport(day)
+
+		CreateDailyReport(CurrentServerIndex, day)
 		break
 	default:
 		break

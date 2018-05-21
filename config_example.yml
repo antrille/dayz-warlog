@@ -1,0 +1,15 @@
+logfile: server.log
+
+db:
+  host:     localhost
+  name:     dayzone
+  user:     postgres
+  password: postgres
+  port:     5432
+  sslmode:  disable
+
+servers:
+- name: dayzone_hardcore              # must contain latin letters, underscores and numbers only
+  fullname: "DAYZONE #1 (Hardcore)"
+- name: dayzone_survival
+  fullname: "DAYZONE #2 (Survival)"

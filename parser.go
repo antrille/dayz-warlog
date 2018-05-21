@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 func ParseLogFile(fn string) bool {
@@ -44,6 +46,8 @@ func ParseLogFile(fn string) bool {
 }
 
 func ParseLogPart(s *bufio.Scanner, t time.Time) {
+	var initTime pq.NullTime
+
 	for s.Scan() {
 		line := s.Text()
 
@@ -56,6 +60,17 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 		}
 
 		t2, _ := time.Parse("15:04:05", line[:strings.Index(line, " |")])
+
+		eventTime := time.Date(t.Year(), t.Month(), t.Day(), t2.Hour(), t2.Minute(), t2.Second(), 0, time.UTC)
+
+		// Day span fix
+		if !initTime.Valid {
+			initTime.Scan(eventTime)
+		}
+
+		if eventTime.Before(initTime.Time) {
+			eventTime = eventTime.AddDate(0, 0, 1)
+		}
 
 		matches := KilledRegexp.FindAllStringSubmatch(line, -1)
 		if matches != nil {
@@ -78,26 +93,16 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 			e := KillEvent{
 				KillerPlayerId: killer.Id,
 				KilledPlayerId: killed.Id,
-				CreatedAt: time.Date(
-					t.Year(),
-					t.Month(),
-					t.Day(),
-					t2.Hour(),
-					t2.Minute(),
-					t2.Second(),
-					0,
-					time.UTC,
-				),
+				CreatedAt: eventTime,
 			}
 
 			db.FirstOrCreate(&e, e)
-
-			//fmt.Printf("KillEvent: %+v\n", e)
 
 			continue
 		}
 
 		matches = HitRegexp.FindAllStringSubmatch(line, -1)
+
 		if matches == nil {
 			matches = ShotRegexp.FindAllStringSubmatch(line, -1)
 		}
@@ -130,21 +135,10 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 				ReceivedPlayerId: receiver.Id,
 				WeaponId:         weapon.Id,
 				BodyPartId:       bodyPart.Id,
-				CreatedAt: time.Date(
-					t.Year(),
-					t.Month(),
-					t.Day(),
-					t2.Hour(),
-					t2.Minute(),
-					t2.Second(),
-					0,
-					time.UTC,
-				),
+				CreatedAt: 		  eventTime,
 			}
 
 			db.FirstOrCreate(&e, e)
-
-			//fmt.Printf("DamageEvent: %+v\n", e)
 
 			continue
 		}
