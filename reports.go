@@ -4,26 +4,26 @@ import (
 	"database/sql"
 	"time"
 	"log"
-	"fmt"
 	"strconv"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
+	"fmt"
 )
 
-func CreateDailyReport(serverIndex int, day time.Time) {
+func GenerateDailyReport(serverIndex int, day time.Time) (*excelize.File, error) {
 	xlsx := excelize.NewFile()
-	schema := Config.Servers[serverIndex].Schema
+	schema := "srv_" + config.Servers[serverIndex].Name
+	fullName := config.Servers[serverIndex].FullName
 
 	killEventsList, err := GetKillEventsList(schema, day)
 	if err != nil {
-		log.Println(err.Error())
-		return
+		return nil, err
 	}
 
 	leadersList, err := GetLeadersList(schema, day)
 	if err != nil {
 		log.Println(err.Error())
-		return
+		return nil, err
 	}
 
 	sheet := xlsx.GetSheetName(xlsx.GetActiveSheetIndex())
@@ -106,6 +106,27 @@ func CreateDailyReport(serverIndex int, day time.Time) {
 			]
 		}`)
 
+	xlsx.MergeCell(sheet, "A1", "E1")
+	xlsx.SetCellStyle(sheet, "A1", "E1", tableHeaderStyle)
+	xlsx.SetCellStyle(sheet, "A2", "E2", captionStyle)
+
+	xlsx.MergeCell(sheet, "H1", "K1")
+	xlsx.SetCellStyle(sheet, "H1", "K1", tableHeaderStyle)
+	xlsx.SetCellStyle(sheet, "H2", "K2", captionStyle)
+
+	xlsx.SetCellStr(sheet, "A1", fmt.Sprintf(lang.Header, fullName, day.Format("02.01.2006")))
+	xlsx.SetCellStr(sheet, "A2", lang.Time)
+	xlsx.SetCellStr(sheet, "B2", lang.Killed)
+	xlsx.SetCellStr(sheet, "C2", lang.Killer)
+	xlsx.SetCellStr(sheet, "D2", lang.Weapon)
+	xlsx.SetCellStr(sheet, "E2", lang.BodyPart)
+
+	xlsx.SetCellStr(sheet, "H1", lang.LeadersList)
+	xlsx.SetCellStr(sheet, "H2", "#")
+	xlsx.SetCellStr(sheet, "I2", lang.Player)
+	xlsx.SetCellStr(sheet, "J2", lang.Kills)
+	xlsx.SetCellStr(sheet, "K2", lang.Deaths)
+
 	xlsx.SetRowHeight(sheet, 1, 24.0)
 	xlsx.SetColWidth(sheet, "A", "A", 12)
 	xlsx.SetColWidth(sheet, "B", "E", 30)
@@ -114,37 +135,6 @@ func CreateDailyReport(serverIndex int, day time.Time) {
 	xlsx.SetColWidth(sheet, "H", "H", 6)
 	xlsx.SetColWidth(sheet, "I", "I", 30)
 	xlsx.SetColWidth(sheet, "J", "K", 10)
-	xlsx.SetCellStyle(sheet, "A2", "E2", captionStyle)
-	xlsx.SetCellStyle(sheet, "H2", "K2", captionStyle)
-	xlsx.SetCellStr(sheet, "A2", "Время")
-	xlsx.SetCellStr(sheet, "B2", "Убитый")
-	xlsx.SetCellStr(sheet, "C2", "Убийца")
-	xlsx.SetCellStr(sheet, "D2", "Оружие")
-	xlsx.SetCellStr(sheet, "E2", "Часть тела")
-	xlsx.SetCellStr(sheet, "H2", "#")
-	xlsx.SetCellStr(sheet, "I2", "Игрок")
-	xlsx.SetCellStr(sheet, "J2", "Убийств")
-	xlsx.SetCellStr(sheet, "K2", "Смертей")
-
-	xlsx.SetCellStyle(sheet, "A1", "E1", tableHeaderStyle)
-	xlsx.MergeCell(sheet, "A1", "E1")
-	xlsx.SetCellStr(
-		sheet,
-		"A1",
-		fmt.Sprintf(
-			"Статистика убийств на сервере \"%s\" за %s",
-			Config.Servers[CurrentServerIndex].FullName,
-			day.Format("02.01.2006"),
-		),
-	)
-
-	xlsx.SetCellStyle(sheet, "H1", "K1", tableHeaderStyle)
-	xlsx.MergeCell(sheet, "H1", "K1")
-	xlsx.SetCellStr(
-		sheet,
-		"H1",
-		"СПИСКИ ЛИДЕРОВ",
-	)
 
 	r := 3
 	for killEventsList.Next() {
@@ -159,17 +149,15 @@ func CreateDailyReport(serverIndex int, day time.Time) {
 		xlsx.SetCellStr(sheet, "B"+i, killed)
 		xlsx.SetCellStr(sheet, "C"+i, killer)
 
-		if weapon.Valid {
-			xlsx.SetCellStr(sheet, "D"+i, weapon.String)
-		} else {
-			xlsx.SetCellStr(sheet, "D"+i, "(неизвестно)")
+		if !weapon.Valid {
+			weapon.Scan(lang.Unknown)
 		}
+		xlsx.SetCellStr(sheet, "D"+i, weapon.String)
 
-		if bodyPart.Valid {
-			xlsx.SetCellStr(sheet, "E"+i, bodyPart.String)
-		} else {
-			xlsx.SetCellStr(sheet, "E"+i, "(неизвестно)")
+		if !bodyPart.Valid {
+			bodyPart.Scan(lang.Unknown)
 		}
+		xlsx.SetCellStr(sheet, "E"+i, bodyPart.String)
 
 		r++
 	}
@@ -206,20 +194,9 @@ func CreateDailyReport(serverIndex int, day time.Time) {
 	}
 
 	xlsx.SetActiveSheet(0)
-	xlsx.SetSheetName(sheet, "За день")
+	xlsx.SetSheetName(sheet, lang.DailyReport)
 
-	fileName := fmt.Sprintf(
-		"reports/%s_%s.xlsx",
-		Config.Servers[serverIndex].Name,
-		day.Format("02.01.2006"),
-	)
-
-	err = xlsx.SaveAs(fileName)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Report saved to \"%s\"!\n", fileName)
+	return xlsx, nil
 }
 
 func GetKillEventsList(schema string, day time.Time) (*sql.Rows, error) {
@@ -231,8 +208,8 @@ func GetKillEventsList(schema string, day time.Time) (*sql.Rows, error) {
 			DISTINCT ON (ke.created_at, ke.killed_player_id, ke.killer_player_id)
 			k1.name AS killed,
 			k2.name AS killer,
-			COALESCE(w.name_ru, w.name) AS weapon,
-			COALESCE(bp.name_ru, bp.name) AS body_part,
+			COALESCE(w.report_name, w.name) AS weapon,
+			COALESCE(bp.report_name, bp.name) AS body_part,
 			ke.created_at AS created_at
 		FROM
 			kill_events ke

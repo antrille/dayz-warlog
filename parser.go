@@ -7,8 +7,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/lib/pq"
+)
+
+var (
+	logStartRegexp = regexp.MustCompile(`AdminLog started on (?P<_0>.+) at (?P<_1>.+)`)
+	killedRegexp   = regexp.MustCompile(`(?P<_0>.+) \| Player "(?P<_1>.+)"\(id=(?P<_2>.+)\) has been killed by player "(?P<_3>.+)"\(id=(?P<_4>.+)\)`)
+	hitRegexp      = regexp.MustCompile(`(?P<_0>.+) \| "(?P<_1>.+)\(uid=(?P<_2>.+)\) HIT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\."`)
+	shotRegexp     = regexp.MustCompile(`(?P<_0>.+) \| "(?P<_1>.+)\(uid=(?P<_2>.+)\) SHOT (?P<_3>.+)\(uid=(?P<_4>.+)\) by (?P<_5>.+) into (?P<_6>.+)\."`)
 )
 
 func ParseLogFile(fn string) bool {
@@ -22,7 +30,7 @@ func ParseLogFile(fn string) bool {
 	for s.Scan() {
 		line := s.Text()
 
-		matches := LogStartRegexp.FindAllStringSubmatch(line, -1)
+		matches := logStartRegexp.FindAllStringSubmatch(line, -1)
 		if matches == nil {
 			continue
 		}
@@ -31,8 +39,6 @@ func ParseLogFile(fn string) bool {
 		e := ServerEvent{Type: "restart", CreatedAt: t}
 
 		db.FirstOrCreate(&e, e)
-
-		//fmt.Printf("%+v\n", e)
 
 		ParseLogPart(s, t)
 	}
@@ -72,7 +78,7 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 			eventTime = eventTime.AddDate(0, 0, 1)
 		}
 
-		matches := KilledRegexp.FindAllStringSubmatch(line, -1)
+		matches := killedRegexp.FindAllStringSubmatch(line, -1)
 		if matches != nil {
 			id, err := strconv.ParseInt(matches[0][5], 10, 64)
 			if err != nil {
@@ -84,7 +90,7 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 
 			id, err = strconv.ParseInt(matches[0][3], 10, 64)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println(err.Error())
 				continue
 			}
 
@@ -101,10 +107,10 @@ func ParseLogPart(s *bufio.Scanner, t time.Time) {
 			continue
 		}
 
-		matches = HitRegexp.FindAllStringSubmatch(line, -1)
+		matches = hitRegexp.FindAllStringSubmatch(line, -1)
 
 		if matches == nil {
-			matches = ShotRegexp.FindAllStringSubmatch(line, -1)
+			matches = shotRegexp.FindAllStringSubmatch(line, -1)
 		}
 
 		if matches != nil {

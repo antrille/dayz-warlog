@@ -1,0 +1,12 @@
+header: "%s server frag report for %s"
+time: Time
+killed: Killed
+killer: Killer
+weapon: Weapon
+bodypart: Body Part
+player: Player
+kills: Kills
+deaths: Deaths
+leaderslist: LEADERS LIST
+unknown: (unknown)
+dailyreport: Daily report

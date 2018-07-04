@@ -1,4 +1,5 @@
 logfile: server.log
+lang: en                              # lang/%lang%.yml
 
 db:
   host:     localhost

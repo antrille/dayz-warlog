@@ -17,13 +17,13 @@ type Player struct {
 type Weapon struct {
 	Id     uint `gorm:"primary_key;unique;not null"`
 	Name   string
-	NameRu sql.NullString
+	ReportName sql.NullString
 }
 
 type BodyPart struct {
 	Id     uint `gorm:"primary_key;unique;not null"`
 	Name   string
-	NameRu sql.NullString
+	ReportName sql.NullString
 }
 
 type ServerEvent struct {
